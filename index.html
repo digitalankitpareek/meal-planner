@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Ghar ka Khana — Meal Planner</title>
+<meta name="description" content="Weekly Indian vegetarian meal planner — no onion/garlic, low oil, with an auto grocery list." />
+
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#2A1D14" />
+<link rel="icon" href="icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Ghar ka Khana" />
+
+<style>
+  html, body { margin: 0; padding: 0; background: #2A1D14; }
+  #root { min-height: 100vh; }
+</style>
+
+<!-- React + Babel from CDN — no build step, works straight from GitHub Pages -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js" crossorigin></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react" src="app.jsx"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {
+        // offline support just won't be available — app still works online
+      });
+    });
+  }
+</script>
+</body>
+</html>
