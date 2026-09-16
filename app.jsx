@@ -312,6 +312,78 @@ function r(id, name, course, cuisine, flavourBase, ingredients, effort, oilLevel
 
 const RECIPE_BY_ID = Object.fromEntries(SEED_RECIPES.map((r) => [r.id, r]));
 
+// Small dish visual. No hotlinked internet photos here on purpose — they'd be
+// copyrighted, and links break over time. Emoji is a reliable, offline-safe
+// default. If you want real photos later, drop a file named "<recipe id>.jpg"
+// into an /images folder next to this app — DishIcon will use it automatically
+// and only fall back to the emoji if that file doesn't exist.
+const RECIPE_EMOJI = {
+  brk_poha: "🍚",
+  brk_upma: "🥣",
+  brk_besan_cheela: "🫓",
+  brk_moong_cheela: "🫓",
+  tif_aloo_paratha: "🫓",
+  tif_curd_rice_box: "🍚",
+  tif_veg_cutlet: "🥔",
+  tif_paneer_roti_roll: "🧀",
+  tif_idli: "⚪",
+  tif_veg_sandwich: "🥪",
+  tif_corn_chaat: "🌽",
+  tif_rava_toast: "🍞",
+  sab_bhindi: "🥘",
+  sab_gobi_aloo: "🥦",
+  sab_lauki: "🥘",
+  sab_guvar: "🥘",
+  sab_palak: "🥬",
+  sab_methi_aloo: "🥘",
+  sab_capsicum_besan: "🫑",
+  sab_carrot_beans: "🥕",
+  sab_tinda: "🥘",
+  sab_mixveg_tomato: "🍅",
+  sab_kadhi: "🥣",
+  sab_gatte: "🍛",
+  sab_tomato_paneer: "🧀",
+  sab_veg_kurma: "🥥",
+  dal_moong: "🍛",
+  dal_toor: "🍛",
+  dal_chana: "🍛",
+  dal_rajma: "🫘",
+  dal_masoor: "🍛",
+  grn_rice: "🍚",
+  grn_roti: "🫓",
+  grn_jeera_rice: "🍚",
+  grn_missi_roti: "🫓",
+  op_khichdi: "🍲",
+  op_pulao: "🍛",
+  op_veg_khichdi: "🍲",
+  sth_sambar: "🍲",
+  sth_rasam: "🥣",
+  sth_curd_rice: "🍚",
+  sth_poriyal: "🥗",
+  snk_roasted_chana: "🥜",
+  snk_sprouts_chaat: "🌱",
+  acc_raita: "🥒",
+  acc_curd: "🥛",
+  acc_kachumber: "🥗",
+  acc_boondi_raita: "🥣",
+};
+const COURSE_EMOJI = {
+  breakfast: "🍽️",
+  tiffin: "🍱",
+  sabzi_dry: "🥘",
+  sabzi_gravy: "🍛",
+  dal: "🍛",
+  grain: "🫓",
+  one_pot: "🍲",
+  south: "🍚",
+  snack: "🥜",
+  accompaniment: "🥗",
+};
+
+function getDishEmoji(rec) {
+  return RECIPE_EMOJI[rec.id] || COURSE_EMOJI[rec.course] || "🍽️";
+}
+
 // meal slot templates. Each slot lists which "course groups" it needs, in order.
 // A course group is an array of acceptable courses (generator picks ONE recipe per group).
 function slotTemplates(dayIndex) {
@@ -367,7 +439,13 @@ function generateWeek({ recipes, season, oilCapPerWeek = 3, southIndianTarget = 
 
       const chosenForSlot = [];
       const usedInThisSlot = new Set(); // avoid e.g. same recipe filling two groups of one meal
+      let primaryCourse = null; // the main dish of this meal (first group picked)
       for (const group of slot.groups) {
+        // A one-pot dish (khichdi, pulao) already IS the grain+dal+veg combo —
+        // pairing it with a separate roti/rice, or a separate dal, would double up.
+        const isRedundantWithOnePot = primaryCourse === "one_pot" && group.length === 1 && (group[0] === "grain" || group[0] === "dal");
+        if (isRedundantWithOnePot) continue;
+
         const isWeekday = d <= 4;
         const baseFilter = (rec) => {
           if (!group.includes(rec.course)) return false;
@@ -415,6 +493,7 @@ function generateWeek({ recipes, season, oilCapPerWeek = 3, southIndianTarget = 
         const top = scored.slice(0, Math.min(5, scored.length));
         const pick = top[Math.floor(Math.random() * top.length)].rec;
 
+        if (primaryCourse === null) primaryCourse = pick.course;
         chosenForSlot.push(pick.id);
         usedInThisSlot.add(pick.id);
         lastUsed[pick.id] = toISODate(thisDate);
@@ -836,26 +915,29 @@ function MealCard({ label, recipeIds, recipes, onSwap, locked, onToggleLock, hou
           .map((ing) => ({ ing, meta: ING_BY_ID[ing.id] }))
           .filter(({ meta }) => meta && meta.category !== "spice" && meta.category !== "oil");
         return (
-          <div key={rec.id} style={{ marginBottom: 10 }}>
-            <div className="serif" style={{ fontSize: 17, fontWeight: 600 }}>
-              {rec.name}
-            </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 4, marginBottom: 6, flexWrap: "wrap" }}>
-              <Tag>{rec.effort} effort</Tag>
-              <Tag>{rec.oilLevel} oil</Tag>
-              {rec.kidFriendly && <Tag color={COLORS.curry}>kid-friendly</Tag>}
-            </div>
-            {basicIngredients.length > 0 && (
-              <div style={{ fontSize: 13, color: COLORS.inkSoft }}>
-                <strong style={{ color: COLORS.ink }}>Need: </strong>
-                {basicIngredients
-                  .map(({ ing, meta }) => {
-                    const qty = household ? scaleQty(ing.qty, household.adults, household.kids, household.kidFactor) : ing.qty;
-                    return `${meta.name} (${formatQty(qty, meta.unit)})`;
-                  })
-                  .join(", ")}
+          <div key={rec.id} style={{ marginBottom: 10, display: "flex", gap: 10 }}>
+            <DishIcon rec={rec} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="serif" style={{ fontSize: 17, fontWeight: 600 }}>
+                {rec.name}
               </div>
-            )}
+              <div style={{ display: "flex", gap: 6, marginTop: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                <Tag>{rec.effort} effort</Tag>
+                <Tag>{rec.oilLevel} oil</Tag>
+                {rec.kidFriendly && <Tag color={COLORS.curry}>kid-friendly</Tag>}
+              </div>
+              {basicIngredients.length > 0 && (
+                <div style={{ fontSize: 13, color: COLORS.inkSoft }}>
+                  <strong style={{ color: COLORS.ink }}>Need: </strong>
+                  {basicIngredients
+                    .map(({ ing, meta }) => {
+                      const qty = household ? scaleQty(ing.qty, household.adults, household.kids, household.kidFactor) : ing.qty;
+                      return `${meta.name} (${formatQty(qty, meta.unit)})`;
+                    })
+                    .join(", ")}
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
@@ -894,6 +976,34 @@ function Tag({ children, color }) {
     >
       {children}
     </span>
+  );
+}
+
+function DishIcon({ rec, size = 44 }) {
+  const [failed, setFailed] = useState(false);
+  const emoji = getDishEmoji(rec);
+  const wrapStyle = {
+    width: size,
+    height: size,
+    borderRadius: 10,
+    border: `1px solid ${COLORS.line}`,
+    flexShrink: 0,
+    background: COLORS.paperDeep,
+  };
+  if (failed) {
+    return (
+      <div style={{ ...wrapStyle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.5 }}>
+        {emoji}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`images/${rec.id}.jpg`}
+      alt={rec.name}
+      onError={() => setFailed(true)}
+      style={{ ...wrapStyle, objectFit: "cover" }}
+    />
   );
 }
 
@@ -1065,7 +1175,8 @@ function RecipesView({ recipes, setRecipes }) {
           key={rec.id}
           style={{ background: COLORS.white, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: 10, marginBottom: 8 }}
         >
-          <summary className="serif" style={{ fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+          <summary className="serif" style={{ fontSize: 15, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+            <DishIcon rec={rec} size={32} />
             {rec.name}
           </summary>
           <div style={{ display: "flex", gap: 6, margin: "8px 0", flexWrap: "wrap" }}>

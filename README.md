@@ -37,6 +37,23 @@ household size in the browser's local storage, on that one device.
   family, the natural next step is a small backend (e.g. a free Supabase project) —
   worth doing once you know the app is one you'll keep using.
 
+## Adding real dish photos (optional)
+
+Every meal currently shows a small emoji icon — reliable, works offline, and
+doesn't depend on any external image links that can break or raise copyright
+questions.
+
+If you'd like real photos of your own dishes instead:
+
+1. Take or find a photo for a dish (a square-ish crop works best).
+2. Save it as a `.jpg` named exactly after that recipe's ID — e.g. `sab_bhindi.jpg`
+   for Bhindi Fry. You can find each recipe's ID in `app.jsx` (search for the
+   dish name; the ID is the first argument, like `"sab_bhindi"`).
+3. Upload the file into an `images/` folder in the same GitHub repo (create the
+   folder if it isn't there yet).
+4. That's it — the app automatically tries `images/<recipe-id>.jpg` first and
+   only falls back to the emoji if the file isn't found. No code changes needed.
+
 ## Updating it later
 
 Whenever you (or I) change `app.jsx`, just re-upload the changed file(s) to the
